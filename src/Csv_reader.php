@@ -1,10 +1,119 @@
 <?php
+/**
+ * Class Csv_reader, you can read and excel file
+ *
+ * This class can extract information from a target or multiple targets and each of them with one or more values
+ *
+ * @category   CCRUZ CSV Reader
+ * @package    ccruz17/csv_reader_with_conditions
+ * @author     Christian Cruz Garrido <ccruz.ga7@gmail.com>
+ * @copyright  2016-2017 CCRUZ
+ * @license    https://www.gnu.org/licenses/gpl-3.0.txt  GNU GENERAL PUBLIC LICENSE V3
+ * @link       https://github.com/ccruz17/csv_reader_with_conditions
+ */
 
 namespace ccruz17;
 
+use PHPExcel;
+use PHPExcel_IOFactory;
+use PHPExcel_Cell;
+use PHPExcel_Cell_DataType;
+use ccruz17\Condition;
+
 class Csv_reader
 {
-    public static function read($type, $file, $configuration) {
-        
+    private $APPLY_FOR_TARGETS = 'targets';
+    private $APPLY_FOR_VALUES = 'values';
+
+    /**
+    * @param string $file           Path of file to read
+    * @param object $configuration  Object with configuration required, multiple_targets, row_targets,
+    *                               column_targets, multiple_values, row_values, column_values
+    * @param array $conditions      Array of Objects Conditions, example: array(ObjectCondition, ObjectCondition)
+    */
+    public function read($file, $configuration, $conditions = null) {
+        $objPHPExcel = PHPExcel_IOFactory::load($file);
+        $objWorksheet = $objPHPExcel->getActiveSheet();
+        $data = array();
+
+        if($configuration->multiple_targets) {
+
+            if($configuration->multiple_values) {
+                //Detect limits of sheet
+                $highestRow         = $objWorksheet->getHighestRow();
+                $highestColumn      = $objWorksheet->getHighestColumn();
+                $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);
+                //get row and column for targets
+                $column_targets = PHPExcel_Cell::columnIndexFromString($configuration->column_targets) - 1;
+                $row_targets = $configuration->row_targets;
+                //get row and column for values
+                $column_values = PHPExcel_Cell::columnIndexFromString($configuration->column_values) -1;
+                $row_values = $configuration->row_values;
+
+                //Check if exist conditions for vales of the target
+                $exist_match_condition_for_values = Condition::exist_condition('match_column', $this->APPLY_FOR_VALUES, $conditions);
+                $exist_sum_condition_for_targets = Condition::exist_condition('sum_rows', $this->APPLY_FOR_TARGETS, $conditions);
+                $exist_sum_condition_for_values = Condition::exist_condition('sum_rows', $this->APPLY_FOR_VALUES, $conditions);
+
+                $return_targets_values = array();
+                for ($row = $row_targets; $row <= $highestRow; $row++) {
+                    $current_row = $row;
+                    $cell_targets = $objWorksheet->getCellByColumnAndRow($column_targets, $current_row);
+                    $target = $cell_targets->getValue();
+
+                    if($exist_sum_condition_for_values) {
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'sum_rows' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                $current_row = $current_row + $val->get_condition()['sum'];
+                            }
+                        }
+                    }
+
+                    if($exist_match_condition_for_values) {
+                        $continue = true;
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'match_column' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                $condition = $val->get_condition();
+                                $column_condition = PHPExcel_Cell::columnIndexFromString($condition['column']) - 1;
+                                $value_condition = $objWorksheet->getCellByColumnAndRow($column_condition, $current_row)->getValue();
+                                if($value_condition != $condition['value']) {
+                                    $continue = false;
+                                }
+                            }
+                        }
+                        if(!$continue) { continue; }
+                    }
+
+                    $values = array();
+                    for ($col = $column_values; $col < $column_values+12; ++ $col) {
+                        $cell = $objWorksheet->getCellByColumnAndRow($col, $current_row);
+                        $values[] = $cell->getValue();
+                    }
+
+                    $return_targets_values[] = array('target' => (string)$target, 'values' => $values);
+
+                    if($exist_sum_condition_for_targets) {
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'sum_rows' && $val->get_apply_for() == $this->APPLY_FOR_TARGETS) {
+                                $row = $row + $val->get_condition()['sum'];
+                            }
+                        }
+                    }
+
+                }
+                return $return_targets_values;
+            }else {
+
+            }
+
+        } else {
+
+            if($configuration->multiple_values) {
+
+            }else {
+
+            }
+
+        }
     }
 }
