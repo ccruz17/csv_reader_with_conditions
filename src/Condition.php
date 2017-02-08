@@ -6,7 +6,7 @@
  *
  * @category   CCRUZ CSV Reader
  * @package    ccruz17/csv_reader_with_conditions
- * @author     Christian Cruz Garrido <ccruz.ga7@gmail.com>
+ * @author     Christian Cruz Garrido <ccruz.ga17@gmail.com>
  * @copyright  2016-2017 CCRUZ
  * @license    https://www.gnu.org/licenses/gpl-3.0.txt  GNU GENERAL PUBLIC LICENSE V3
  * @link       https://github.com/ccruz17/csv_reader_with_conditions

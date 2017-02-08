@@ -6,7 +6,7 @@
  *
  * @category   CCRUZ CSV Reader
  * @package    ccruz17/csv_reader_with_conditions
- * @author     Christian Cruz Garrido <ccruz.ga7@gmail.com>
+ * @author     Christian Cruz Garrido <ccruz.ga17@gmail.com>
  * @copyright  2016-2017 CCRUZ
  * @license    https://www.gnu.org/licenses/gpl-3.0.txt  GNU GENERAL PUBLIC LICENSE V3
  * @link       https://github.com/ccruz17/csv_reader_with_conditions
@@ -52,10 +52,23 @@ class Csv_reader
 
                 //Check if exist conditions for vales of the target
                 $exist_match_condition_for_values = Condition::exist_condition('match_column', $this->APPLY_FOR_VALUES, $conditions);
+                $exist_match_current_condition_for_values = Condition::exist_condition('match_current', $this->APPLY_FOR_VALUES, $conditions);
                 $exist_sum_condition_for_targets = Condition::exist_condition('sum_rows', $this->APPLY_FOR_TARGETS, $conditions);
                 $exist_sum_condition_for_values = Condition::exist_condition('sum_rows', $this->APPLY_FOR_VALUES, $conditions);
+                $exist_length_condition_for_values = Condition::exist_condition('length_values', $this->APPLY_FOR_VALUES, $conditions);
+                $exist_length_condition_for_targets = Condition::exist_condition('length_targets', $this->APPLY_FOR_TARGETS, $conditions);
 
                 $return_targets_values = array();
+
+                if($exist_length_condition_for_targets) {
+                    foreach ($conditions as $key => $val) {
+                        if($val->get_type() == 'length_targets' && $val->get_apply_for() == $this->APPLY_FOR_TARGETS) {
+                            $condition = $val->get_condition();
+                            $highestRow = $condition['length'];
+                        }
+                    }
+                }
+
                 for ($row = $row_targets; $row <= $highestRow; $row++) {
                     $current_row = $row;
                     $cell_targets = $objWorksheet->getCellByColumnAndRow($column_targets, $current_row);
@@ -84,10 +97,34 @@ class Csv_reader
                         if(!$continue) { continue; }
                     }
 
+                    $length_values = $highestColumnIndex;
+                    if($exist_length_condition_for_values) {
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'length_values' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                $condition = $val->get_condition();
+                                $length_values = $condition['length'];
+                            }
+                        }
+                    }
+
                     $values = array();
-                    for ($col = $column_values; $col < $column_values+12; ++ $col) {
+
+
+                    for ($col = $column_values; $col < $column_values+$length_values; ++ $col) {
                         $cell = $objWorksheet->getCellByColumnAndRow($col, $current_row);
-                        $values[] = $cell->getValue();
+
+                        if($exist_match_current_condition_for_values) {
+                            foreach ($conditions as $key => $val) {
+                                if($val->get_type() == 'match_current' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                    $match_value = $val->get_condition()['value'];
+                                    if($match_value == $cell->getValue()) {
+                                        $values[$col] = $cell->getValue();
+                                    }
+                                }
+                            }
+                        } else {
+                            $values[$col] = $cell->getValue();
+                        }
                     }
 
                     $return_targets_values[] = array('target' => (string)$target, 'values' => $values);
@@ -99,7 +136,6 @@ class Csv_reader
                             }
                         }
                     }
-
                 }
                 return $return_targets_values;
             }else {
