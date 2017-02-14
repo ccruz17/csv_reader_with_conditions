@@ -43,9 +43,9 @@ class Csv_reader
                 return $return_targets_values;
             }
         } else {
-            $objPHPExcel->getActiveSheet();
+            $objWorksheet = $objPHPExcel->getActiveSheet();
         }
-        
+
         $data = array();
 
         if($configuration->multiple_values) {
