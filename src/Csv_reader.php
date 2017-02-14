@@ -28,12 +28,24 @@ class Csv_reader
     /**
     * @param string $file           Path of file to read
     * @param object $configuration  Object with configuration required, multiple_targets, row_targets,
-    *                               column_targets, multiple_values, row_values, column_values
+    *                               column_targets, multiple_values, row_values, column_values, sheet
     * @param array $conditions      Array of Objects Conditions, example: array(ObjectCondition, ObjectCondition)
     */
     public function read($file, $configuration, $conditions = array()) {
         $objPHPExcel = PHPExcel_IOFactory::load($file);
-        $objWorksheet = $objPHPExcel->getActiveSheet();
+        $objWorksheet = null;
+        if($configuration->sheet != null) {
+            $sheets = $objPHPExcel->getSheetNames();
+            if(in_array($configuration->sheet, $sheets)) {
+                $objWorksheet = $objPHPExcel->setActiveSheetIndexByName($configuration->sheet);
+            } else {
+                $return_targets_values[] = array('target' => $file, 'values' => array());
+                return $return_targets_values;
+            }
+        } else {
+            $objPHPExcel->getActiveSheet();
+        }
+        
         $data = array();
 
         if($configuration->multiple_values) {
