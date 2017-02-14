@@ -31,124 +31,119 @@ class Csv_reader
     *                               column_targets, multiple_values, row_values, column_values
     * @param array $conditions      Array of Objects Conditions, example: array(ObjectCondition, ObjectCondition)
     */
-    public function read($file, $configuration, $conditions = null) {
+    public function read($file, $configuration, $conditions = array()) {
         $objPHPExcel = PHPExcel_IOFactory::load($file);
         $objWorksheet = $objPHPExcel->getActiveSheet();
         $data = array();
 
-        if($configuration->multiple_targets) {
+        if($configuration->multiple_values) {
+            //Detect limits of sheet
+            $highestRow         = $objWorksheet->getHighestRow();
+            $highestColumn      = $objWorksheet->getHighestColumn();
+            $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);
+            //get row and column for targets
+            $column_targets = PHPExcel_Cell::columnIndexFromString($configuration->column_targets) - 1;
+            $row_targets = $configuration->row_targets;
+            //get row and column for values
+            $column_values = PHPExcel_Cell::columnIndexFromString($configuration->column_values) -1;
+            $row_values = $configuration->row_values;
 
-            if($configuration->multiple_values) {
-                //Detect limits of sheet
-                $highestRow         = $objWorksheet->getHighestRow();
-                $highestColumn      = $objWorksheet->getHighestColumn();
-                $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);
-                //get row and column for targets
-                $column_targets = PHPExcel_Cell::columnIndexFromString($configuration->column_targets) - 1;
-                $row_targets = $configuration->row_targets;
-                //get row and column for values
-                $column_values = PHPExcel_Cell::columnIndexFromString($configuration->column_values) -1;
-                $row_values = $configuration->row_values;
+            //Check if exist conditions for vales of the target
+            $exist_match_condition_for_values = Condition::exist_condition('match_column', $this->APPLY_FOR_VALUES, $conditions);
+            $exist_match_current_condition_for_values = Condition::exist_condition('match_current', $this->APPLY_FOR_VALUES, $conditions);
+            $exist_sum_condition_for_targets = Condition::exist_condition('sum_rows', $this->APPLY_FOR_TARGETS, $conditions);
+            $exist_sum_condition_for_values = Condition::exist_condition('sum_rows', $this->APPLY_FOR_VALUES, $conditions);
+            $exist_length_condition_for_values = Condition::exist_condition('length_values', $this->APPLY_FOR_VALUES, $conditions);
+            $exist_length_condition_for_targets = Condition::exist_condition('length_targets', $this->APPLY_FOR_TARGETS, $conditions);
 
-                //Check if exist conditions for vales of the target
-                $exist_match_condition_for_values = Condition::exist_condition('match_column', $this->APPLY_FOR_VALUES, $conditions);
-                $exist_match_current_condition_for_values = Condition::exist_condition('match_current', $this->APPLY_FOR_VALUES, $conditions);
-                $exist_sum_condition_for_targets = Condition::exist_condition('sum_rows', $this->APPLY_FOR_TARGETS, $conditions);
-                $exist_sum_condition_for_values = Condition::exist_condition('sum_rows', $this->APPLY_FOR_VALUES, $conditions);
-                $exist_length_condition_for_values = Condition::exist_condition('length_values', $this->APPLY_FOR_VALUES, $conditions);
-                $exist_length_condition_for_targets = Condition::exist_condition('length_targets', $this->APPLY_FOR_TARGETS, $conditions);
+            $return_targets_values = array();
 
-                $return_targets_values = array();
-
-                if($exist_length_condition_for_targets) {
-                    foreach ($conditions as $key => $val) {
-                        if($val->get_type() == 'length_targets' && $val->get_apply_for() == $this->APPLY_FOR_TARGETS) {
-                            $condition = $val->get_condition();
-                            $highestRow = $condition['length'];
-                        }
+            if($exist_length_condition_for_targets) {
+                foreach ($conditions as $key => $val) {
+                    if($val->get_type() == 'length_targets' && $val->get_apply_for() == $this->APPLY_FOR_TARGETS) {
+                        $condition = $val->get_condition();
+                        $highestRow = $condition['length'];
                     }
                 }
+            }
 
-                for ($row = $row_targets; $row <= $highestRow; $row++) {
-                    $current_row = $row;
+            if(!$configuration->multiple_targets){
+                $cell_targets = $objWorksheet->getCellByColumnAndRow($column_targets, $row_targets);
+                $target = $cell_targets->getValue();
+            }
+
+            for ($row = $row_targets; $row <= $highestRow; $row++) {
+                $current_row = $row;
+                if($configuration->multiple_targets){
                     $cell_targets = $objWorksheet->getCellByColumnAndRow($column_targets, $current_row);
                     $target = $cell_targets->getValue();
+                }
 
-                    if($exist_sum_condition_for_values) {
-                        foreach ($conditions as $key => $val) {
-                            if($val->get_type() == 'sum_rows' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
-                                $current_row = $current_row + $val->get_condition()['sum'];
-                            }
-                        }
-                    }
-
-                    if($exist_match_condition_for_values) {
-                        $continue = true;
-                        foreach ($conditions as $key => $val) {
-                            if($val->get_type() == 'match_column' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
-                                $condition = $val->get_condition();
-                                $column_condition = PHPExcel_Cell::columnIndexFromString($condition['column']) - 1;
-                                $value_condition = $objWorksheet->getCellByColumnAndRow($column_condition, $current_row)->getValue();
-                                if($value_condition != $condition['value']) {
-                                    $continue = false;
-                                }
-                            }
-                        }
-                        if(!$continue) { continue; }
-                    }
-
-                    $length_values = $highestColumnIndex;
-                    if($exist_length_condition_for_values) {
-                        foreach ($conditions as $key => $val) {
-                            if($val->get_type() == 'length_values' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
-                                $condition = $val->get_condition();
-                                $length_values = $condition['length'];
-                            }
-                        }
-                    }
-
-                    $values = array();
-
-
-                    for ($col = $column_values; $col < $column_values+$length_values; ++ $col) {
-                        $cell = $objWorksheet->getCellByColumnAndRow($col, $current_row);
-
-                        if($exist_match_current_condition_for_values) {
-                            foreach ($conditions as $key => $val) {
-                                if($val->get_type() == 'match_current' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
-                                    $match_value = $val->get_condition()['value'];
-                                    if($match_value == $cell->getValue()) {
-                                        $values[$col] = $cell->getValue();
-                                    }
-                                }
-                            }
-                        } else {
-                            $values[$col] = $cell->getValue();
-                        }
-                    }
-
-                    $return_targets_values[] = array('target' => (string)$target, 'values' => $values);
-
-                    if($exist_sum_condition_for_targets) {
-                        foreach ($conditions as $key => $val) {
-                            if($val->get_type() == 'sum_rows' && $val->get_apply_for() == $this->APPLY_FOR_TARGETS) {
-                                $row = $row + $val->get_condition()['sum'];
-                            }
+                if($exist_sum_condition_for_values) {
+                    foreach ($conditions as $key => $val) {
+                        if($val->get_type() == 'sum_rows' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                            $current_row = $current_row + $val->get_condition()['sum'];
                         }
                     }
                 }
-                return $return_targets_values;
-            }else {
 
+                if($exist_match_condition_for_values) {
+                    $continue = true;
+                    foreach ($conditions as $key => $val) {
+                        if($val->get_type() == 'match_column' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                            $condition = $val->get_condition();
+                            $column_condition = PHPExcel_Cell::columnIndexFromString($condition['column']) - 1;
+                            $value_condition = $objWorksheet->getCellByColumnAndRow($column_condition, $current_row)->getValue();
+                            if($value_condition != $condition['value']) {
+                                $continue = false;
+                            }
+                        }
+                    }
+                    if(!$continue) { continue; }
+                }
+
+                $length_values = $highestColumnIndex;
+                if($exist_length_condition_for_values) {
+                    foreach ($conditions as $key => $val) {
+                        if($val->get_type() == 'length_values' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                            $condition = $val->get_condition();
+                            $length_values = $condition['length'];
+                        }
+                    }
+                }
+
+                $values = array();
+
+
+                for ($col = $column_values; $col < $column_values+$length_values; ++ $col) {
+                    $cell = $objWorksheet->getCellByColumnAndRow($col, $current_row);
+
+                    if($exist_match_current_condition_for_values) {
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'match_current' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                $match_value = $val->get_condition()['value'];
+                                if($match_value == $cell->getValue()) {
+                                    $values[$col] = $cell->getValue();
+                                }
+                            }
+                        }
+                    } else {
+                        $values[$col] = $cell->getValue();
+                    }
+                }
+
+                $return_targets_values[] = array('target' => (string)$target, 'values' => $values);
+
+                if($exist_sum_condition_for_targets) {
+                    foreach ($conditions as $key => $val) {
+                        if($val->get_type() == 'sum_rows' && $val->get_apply_for() == $this->APPLY_FOR_TARGETS) {
+                            $row = $row + $val->get_condition()['sum'];
+                        }
+                    }
+                }
             }
-
-        } else {
-
-            if($configuration->multiple_values) {
-
-            }else {
-
-            }
+            return $return_targets_values;
+        }else {
 
         }
     }
