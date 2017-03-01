@@ -43,6 +43,7 @@ class Csv_reader
                 return $return_targets_values;
             }
         } else {
+            $objPHPExcel->setActiveSheetIndex(0);
             $objWorksheet = $objPHPExcel->getActiveSheet();
         }
 
@@ -155,7 +156,7 @@ class Csv_reader
                 }
             }
             return $return_targets_values;
-        }else {
+        } else {
 
         }
     }
