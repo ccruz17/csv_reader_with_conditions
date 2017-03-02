@@ -68,6 +68,7 @@ class Csv_reader
             $exist_sum_condition_for_values = Condition::exist_condition('sum_rows', $this->APPLY_FOR_VALUES, $conditions);
             $exist_length_condition_for_values = Condition::exist_condition('length_values', $this->APPLY_FOR_VALUES, $conditions);
             $exist_length_condition_for_targets = Condition::exist_condition('length_targets', $this->APPLY_FOR_TARGETS, $conditions);
+            $exist_values_vertical_condition = Condition::exist_condition('vertical_values', $this->APPLY_FOR_VALUES, $conditions);
 
             $return_targets_values = array();
 
@@ -128,7 +129,11 @@ class Csv_reader
                 $values = array();
 
 
+                $idx_vertical = 0;
                 for ($col = $column_values; $col < $column_values+$length_values; ++ $col) {
+                    if($idx_vertical == $length_values) {
+                        break;
+                    }
                     $cell = $objWorksheet->getCellByColumnAndRow($col, $current_row);
 
                     if($exist_match_current_condition_for_values) {
@@ -136,12 +141,22 @@ class Csv_reader
                             if($val->get_type() == 'match_current' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
                                 $match_value = $val->get_condition()['value'];
                                 if($match_value == $cell->getValue()) {
-                                    $values[$col] = $cell->getValue();
+                                    $values[$col+$idx_vertical] = $cell->getValue();
                                 }
                             }
                         }
                     } else {
-                        $values[$col] = $cell->getValue();
+                        $values[$col+$idx_vertical] = $cell->getValue();
+                    }
+                    if($exist_values_vertical_condition) {
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'vertical_values' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                $sum = $val->get_condition()['sum'];
+                                $current_row += $sum;
+                                $col--;
+                                $idx_vertical++;
+                            }
+                        }
                     }
                 }
 
