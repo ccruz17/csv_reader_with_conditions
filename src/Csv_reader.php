@@ -69,7 +69,8 @@ class Csv_reader
             $exist_length_condition_for_values = Condition::exist_condition('length_values', $this->APPLY_FOR_VALUES, $conditions);
             $exist_length_condition_for_targets = Condition::exist_condition('length_targets', $this->APPLY_FOR_TARGETS, $conditions);
             $exist_values_vertical_condition = Condition::exist_condition('vertical_values', $this->APPLY_FOR_VALUES, $conditions);
-
+            $exist_diferent_value_condition = Condition::exist_condition('diferent_value', $this->APPLY_FOR_VALUES, $conditions);
+            
             $return_targets_values = array();
 
             if($exist_length_condition_for_targets) {
@@ -141,6 +142,15 @@ class Csv_reader
                             if($val->get_type() == 'match_current' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
                                 $match_value = $val->get_condition()['value'];
                                 if($match_value == $cell->getValue()) {
+                                    $values[$col+$idx_vertical] = $cell->getValue();
+                                }
+                            }
+                        }
+                    } else if($exist_diferent_value_condition) {
+                        foreach ($conditions as $key => $val) {
+                            if($val->get_type() == 'diferent_value' && $val->get_apply_for() == $this->APPLY_FOR_VALUES) {
+                                $diferent_value = $val->get_condition()['value'];
+                                if($diferent_value !== $cell->getValue()) {
                                     $values[$col+$idx_vertical] = $cell->getValue();
                                 }
                             }
